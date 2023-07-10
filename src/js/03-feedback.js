@@ -2,42 +2,53 @@ import throttle from "lodash.throttle";
 
 const refs = {
     takeForm: document.querySelector('.feedback-form'),
-    messageText: document.querySelector(".feedback-form textarea"),
-    emailText: document.querySelector(".feedback-form input"),
 }
 
-// populateTextarea(); //виклик функції для отримання данних при завантаженні сторінки - якщо в ЛС були даніБ вони мають відобразитися у текстареа
 const STORAGE_KEY = "feedback-form-state";
-const formData = {};
-populateTextarea()
+let formData = {};
+//прослуховуємо подію введення даних на самій формі(спідьний батько для инпуту та тексареа)
+//викликаємо функцію збереження данних у локалсторедж з відкладенням у 500мс - через бібілотеку троттл
+refs.takeForm.addEventListener("input", throttle(onTextInput, 500));
 
-refs.takeForm.addEventListener("input", event => { 
-    formData[event.target.name] = event.target.value;
 
-} )
+//Функція збереження данних у локалсторедж внесенних у поля форми
+function onTextInput(event) { 
+    formData[event.target.name] = event.target.value.trim();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(formData));// зберігаємо у локалсторедж введені значення у текстареа та інпут
+}
 
 refs.takeForm.addEventListener("submit", onFormSubmit); 
-refs.messageText.addEventListener('input', throttle(onTextInput, 500));
-
-// Функція отримання значення повідомлення
- function onTextInput(event) { 
-    localStorage.setItem("STORAGE_KEY", JSON.stringify(formData))
-}
 
 // Функція відправлення повідомлення
 function onFormSubmit(event) {
     event.preventDefault(); // скинули подію по замовченню
     event.currentTarget.reset(); // обнулили заповненні поля
-    localStorage.removeItem("STORAGE_KEY"); //обнулили локалсторейдж
+    localStorage.removeItem(STORAGE_KEY); //обнулили локалсторейдж
+    console.log(formData)//виводимо обєкт отриманних значень у консоль
+    formData = {}; //обнуляємо значення 
 }
 
-//Функція заповнення полів форми при невідправленній формі(щоб зберигалась введена але не відправлена інформація)
-function populateTextarea(event) { 
-    const savedData = localStorage.getItem("STORAGE_KEY");
-    const parseData = JSON.parse(savedData)
+//Функція при перезавантаженні сторінки(форма не була відправлена)
 
-    if (parseData) {    
-        refs.emailText.value = parseData.email;
-        refs.messageText.value = parseData.message 
+function onReload() { 
+    try {
+        const savedData = localStorage.getItem(STORAGE_KEY);
+        if (!savedData) return;
+        formData = JSON.parse(savedData);
+        // console.log(formData);
+
+        
+        Object.entries(formData).forEach(([key, val]) => {//[key, val] - дуструктуризація масива
+            //отримуємо доступ до значень інпутів форми та записуємо туди значення val
+            // console.log(refs.takeForm.elements) //посилання на масив едементів форми
+            //console.log(refs.takeForm.elements[key]); //доступ до елементів форми окремо
+            
+            refs.takeForm.elements[key].value = val; // присовєння значень инпутам. Значення взяті із збереженних значень у локалсторедж які
+            //збережені у глобальну змінну formData (значення цієї змінної були деструктиризовані [key, val])
+        });
+    } catch (error) {
+        console.log(error.message);
     }
 }
+window.addEventListener("load", onReload)
+
